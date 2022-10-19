@@ -7,18 +7,23 @@ const modalRoot = document.getElementById('modal-root');
 
 export default function Modal({ toggleModal, largeImgUrl }) {
   useEffect(() => {
-    document.addEventListener('keydown', closeModal);
-    return () => document.removeEventListener('keydown', closeModal);
+    const closeModalEsc = ({ code }) => {
+      if (code === 'Escape') {
+        toggleModal();
+      }
+    };
+    document.addEventListener('keydown', closeModalEsc);
+    return () => document.removeEventListener('keydown', closeModalEsc);
   }, [toggleModal]);
 
-  const closeModal = ({ target, currentTarget, code }) => {
-    if (target === currentTarget || code === 'Escape') {
+  const closeModalBackdropClick = ({ target, currentTarget }) => {
+    if (target === currentTarget) {
       toggleModal();
     }
   };
 
   return createPortal(
-    <Overlay onClick={closeModal}>
+    <Overlay onClick={closeModalBackdropClick}>
       <ModalWindow>
         <LargeImg src={largeImgUrl} alt="" />
       </ModalWindow>
