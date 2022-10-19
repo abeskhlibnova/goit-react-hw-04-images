@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import { fetchImages } from 'shares/fetchApiImages';
 import Modal from 'components/Modal';
 import Searchbar from '../Searchbar';
@@ -7,106 +7,72 @@ import ImageGalleryItem from '../ImageGalleryItem';
 import Button from 'components/Button';
 import { ImageGalleryWrapper } from './ImageGallery.styled';
 
-export default class ImageGallery extends Component {
-    state = {
-        search: '',
-        images: [],
-        loading: false,
-        error: null,
-        page: 1,
-        openModal: false,
-        largeImgUrl: null,
-    };
+export default function ImageGallery() {
+  const [search, setSearch] = useState('');
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [openModal, setOpenModal] = useState(false);
+  const [largeImgUrl, setLargeImgUrl] = useState(null);
 
-    componentDidUpdate(_, prevState) {
-        const { search, page } = this.state;
-        if (prevState.search !== search || prevState.page !== page) {
-            this.searchImages(search, page);
-        }
+  useEffect(() => {
+    if (search === '') {
+      return;
     }
+    const searchImages = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchImages(search, page);
+        setImages(prevImg => [...prevImg, ...data.hits]);
+      } catch (error) {
+        setError(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    searchImages(search, page);
+  }, [page, search]);
 
-    async searchImages() {
-        const { search, page } = this.state;
-        this.setState({
-            loading: true,
-        });
-        try {
-            const data = await fetchImages(search, page);
-            this.setState(state => {
-                return {
-                    images: [...state.images, ...data.hits],
-                };
-            });
-        } catch (error) {
-            this.setState({
-                error,
-            });
-        } finally {
-            this.setState({
-                loading: false,
-            });
-        }
+  const handleSubmit = e => {
+    e.preventDefault();
+    const nextSearch = e.target.elements.search.value;
+    if (search === nextSearch) {
+      return;
     }
+    setPage(1);
+    setSearch(nextSearch);
+    setImages([]);
+  };
 
-    handleSubmit = e => {
-        e.preventDefault();
-        const prevSearch = this.state.search;
-        const nextSearch = e.target.elements.search.value;
-        if (prevSearch === nextSearch) {
-            return;
-        }
-        this.setState({
-            page: 1,
-            search: nextSearch,
-            images: [],
-        });
-    };
+  const onClickImage = imgUrl => {
+    toggleModal();
+    setLargeImgUrl(imgUrl);
+  };
 
-    onClickImage = imgUrl => {
-        this.toggleModal();
-        this.setState({
-            largeImgUrl: imgUrl,
-        });
-    };
+  const toggleModal = () => {
+    setOpenModal(prevOpenModal => !prevOpenModal);
+    setLargeImgUrl(null);
+  };
 
-    toggleModal = () => {
-        this.setState(state => ({
-            openModal: !state.openModal,
-            largeImgUrl: null,
-        }));
-    };
+  const loadMore = () => {
+    setPage(page => page + 1);
+  };
 
-    loadMore = () => {
-        this.setState(prevState => {
-            return {
-                page: prevState.page + 1,
-            };
-        });
-    };
+  const isImages = Boolean(images.length);
 
-    render() {
-        const { images, loading, error, openModal, largeImgUrl } = this.state;
-        const { handleSubmit, loadMore, onClickImage, toggleModal } = this;
-        const isImages = Boolean(images.length);
-        return (
-            <ImageGalleryWrapper>
-                {openModal && (
-                    <Modal
-                        largeImgUrl={largeImgUrl}
-                        toggleModal={toggleModal}
-                    />
-                )}
-                <Searchbar onSubmit={handleSubmit} />
-                {loading && <Loader />}
-                {error && <p>Something wrong</p>}
-                {isImages && (
-                    <ImageGalleryItem
-                        items={images}
-                        onClickImage={onClickImage}
-                    />
-                )}
-                {images.length !== 0 && <Button loadMore={loadMore} />}
-            </ImageGalleryWrapper>
-        );
-    }
+  return (
+    <ImageGalleryWrapper>
+      {openModal && (
+        <Modal largeImgUrl={largeImgUrl} toggleModal={toggleModal} />
+      )}
+      <Searchbar onSubmit={handleSubmit} />
+      {loading && <Loader />}
+      {error && <p>Something wrong</p>}
+      {isImages && (
+        <ImageGalleryItem items={images} onClickImage={onClickImage} />
+      )}
+      {images.length !== 0 && <Button loadMore={loadMore} />}
+    </ImageGalleryWrapper>
+  );
 }
